@@ -1,3 +1,6 @@
+-- Warehouse schema for the Insurance Claims Risk Platform
+-- Matches the real columns available in fraud_oracle.csv -- no
+-- synthesized monetary or date fields.
 
 CREATE SCHEMA IF NOT EXISTS claims;
 
@@ -51,6 +54,7 @@ CREATE TABLE IF NOT EXISTS claims.model_scores (
     fraud_probability       NUMERIC,   -- XGBoost, trained on real fraud_reported label
     anomaly_score           NUMERIC,   -- Isolation Forest on real feature set
     customer_risk_index     NUMERIC,   -- composed from real per-claim risk signals
+    triage_flag             TEXT,      -- computed from percentile-based thresholds in score_all.py
     scored_at                TIMESTAMP DEFAULT now()
 );
 
@@ -79,11 +83,7 @@ SELECT
     l.recommended_action,
     l.flagged_reasons,
     l.rationale_text,
-    CASE
-        WHEN s.fraud_probability >= 0.7 OR s.anomaly_score >= 0.7 THEN 'RED'
-        WHEN s.fraud_probability >= 0.4 OR s.anomaly_score >= 0.4 THEN 'YELLOW'
-        ELSE 'GREEN'
-    END AS triage_flag
+    COALESCE(s.triage_flag, 'GREEN') AS triage_flag
 FROM claims.raw_claims r
 LEFT JOIN claims.model_scores s ON r.claim_id = s.claim_id
 LEFT JOIN claims.llm_rationale l ON r.claim_id = l.claim_id;
