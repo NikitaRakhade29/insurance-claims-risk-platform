@@ -1,6 +1,5 @@
 
 import os
-
 import pandas as pd
 import psycopg2
 import streamlit as st
@@ -9,151 +8,347 @@ PG_CONN_STR = os.environ.get(
     "DATABASE_URL", "postgresql://airflow:airflow@localhost:5432/airflow"
 )
 
-st.set_page_config(page_title="Claims Risk Console", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(
+    page_title="Insurance Claims Risk & Fraud Intelligence",
+    page_icon="🛡️",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# --- Design system: dark ops-console theme, semantic risk color, technical type pairing ---
+# --- Executive Glassmorphism & High-Impact Styling ---
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
 
-/* hide Streamlit chrome */
 #MainMenu, footer, header [data-testid="stToolbar"] { visibility: hidden; height: 0; }
 .stDeployButton { display: none; }
 
-html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
-h1, h2, h3 { font-family: 'Space Grotesk', sans-serif !important; letter-spacing: -0.01em; }
+html, body, [class*="css"] {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: #0B0F17;
+    color: #E2E8F0;
+}
 
-/* page title */
-.console-title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 2.4rem;
-    color: #E7EAEE; margin-bottom: 0.1rem; }
-.console-subtitle { font-family: 'Inter', sans-serif; color: #8B93A3; font-size: 0.95rem; margin-bottom: 1.6rem; }
+/* Header Container */
+.hero-header {
+    background: linear-gradient(135deg, #111827 0%, #1F2937 100%);
+    border: 1px solid #374151;
+    border-radius: 16px;
+    padding: 1.8rem 2.2rem;
+    margin-bottom: 1.8rem;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+}
 
-/* metric cards */
+.hero-title {
+    font-size: 2.2rem;
+    font-weight: 800;
+    background: linear-gradient(90deg, #60A5FA, #A78BFA);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0;
+    letter-spacing: -0.02em;
+}
+
+.hero-subtitle {
+    color: #9CA3AF;
+    font-size: 1.05rem;
+    margin-top: 0.4rem;
+    font-weight: 500;
+}
+
+/* Metric Cards */
 div[data-testid="stMetric"] {
-    background: #1B212B; border: 1px solid #2A313D; border-radius: 10px;
-    padding: 1rem 1.1rem; border-left: 3px solid #4C8DFF;
+    background: #111827;
+    border: 1px solid #1F2937;
+    border-radius: 12px;
+    padding: 1.2rem 1.4rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease, border-color 0.2s ease;
 }
-div[data-testid="stMetric"] label { color: #8B93A3 !important; font-size: 0.78rem !important;
-    text-transform: uppercase; letter-spacing: 0.04em; }
+
+div[data-testid="stMetric"]:hover {
+    transform: translateY(-2px);
+    border-color: #3B82F6;
+}
+
+div[data-testid="stMetric"] label {
+    color: #9CA3AF !important;
+    font-size: 0.82rem !important;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
 div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
-    font-family: 'JetBrains Mono', monospace; color: #E7EAEE; }
-
-/* semantic accent per metric column, by order: total / red / yellow / green */
-div[data-testid="column"]:nth-of-type(2) div[data-testid="stMetric"] { border-left-color: #E5484D; }
-div[data-testid="column"]:nth-of-type(3) div[data-testid="stMetric"] { border-left-color: #F5A623; }
-div[data-testid="column"]:nth-of-type(4) div[data-testid="stMetric"] { border-left-color: #3ECF8E; }
-
-/* expander (claim card) */
-div[data-testid="stExpander"] {
-    background: #1B212B; border: 1px solid #2A313D !important; border-radius: 10px;
-    margin-bottom: 0.5rem; overflow: hidden;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.8rem !important;
+    font-weight: 700;
+    color: #F3F4F6;
 }
-div[data-testid="stExpander"] summary { font-family: 'JetBrains Mono', monospace; font-size: 0.92rem; }
-div[data-testid="stExpander"] summary:hover { background: #222A36; }
 
-/* risk chip badges */
-.chip { display:inline-block; padding: 0.15rem 0.6rem; border-radius: 999px; font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem; font-weight: 600; letter-spacing: 0.03em; margin-right: 0.4rem; }
-.chip-red { background: rgba(229,72,77,0.15); color: #F27074; border: 1px solid rgba(229,72,77,0.4); }
-.chip-yellow { background: rgba(245,166,35,0.15); color: #F6B94D; border: 1px solid rgba(245,166,35,0.4); }
-.chip-green { background: rgba(62,207,142,0.15); color: #5EDBA5; border: 1px solid rgba(62,207,142,0.4); }
-.chip-neutral { background: rgba(76,141,255,0.15); color: #7CA8FF; border: 1px solid rgba(76,141,255,0.4); }
+/* Semantic Card Accents */
+div[data-testid="column"]:nth-of-type(1) div[data-testid="stMetric"] { border-top: 4px solid #3B82F6; }
+div[data-testid="column"]:nth-of-type(2) div[data-testid="stMetric"] { border-top: 4px solid #EF4444; }
+div[data-testid="column"]:nth-of-type(3) div[data-testid="stMetric"] { border-top: 4px solid #F59E0B; }
+div[data-testid="column"]:nth-of-type(4) div[data-testid="stMetric"] { border-top: 4px solid #10B981; }
 
-/* rationale box */
-.rationale-box { background: #161B23; border-left: 3px solid #4C8DFF; border-radius: 6px;
-    padding: 0.8rem 1rem; margin: 0.6rem 0; font-size: 0.92rem; color: #C7CDD6; }
+/* Custom Badges */
+.badge-red {
+    background: rgba(239, 68, 68, 0.15);
+    color: #F87171;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    font-family: 'JetBrains Mono', monospace;
+}
 
-.data-label { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: #8B93A3; }
-.data-value { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: #E7EAEE; }
+.badge-yellow {
+    background: rgba(245, 158, 11, 0.15);
+    color: #FBBF24;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    font-family: 'JetBrains Mono', monospace;
+}
 
-section[data-testid="stSidebar"] { background: #161B23; border-right: 1px solid #2A313D; }
+.badge-green {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34D399;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* AI Rationale Box */
+.ai-rationale-card {
+    background: #111827;
+    border-left: 4px solid #8B5CF6;
+    border-radius: 8px;
+    padding: 1.2rem 1.5rem;
+    margin: 1rem 0;
+}
+
+.ai-rationale-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #A78BFA;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+}
+
+.ai-rationale-body {
+    font-size: 0.98rem;
+    color: #E5E7EB;
+    line-height: 1.6;
+}
+
+/* Sidebar Styling */
+section[data-testid="stSidebar"] {
+    background-color: #0D1117;
+    border-right: 1px solid #1F2937;
+}
+
+/* Expander custom styling */
+div[data-testid="stExpander"] {
+    background-color: #111827;
+    border: 1px solid #1F2937 !important;
+    border-radius: 12px;
+    margin-bottom: 0.8rem;
+}
 </style>
 """, unsafe_allow_html=True)
 
 
 @st.cache_data(ttl=60)
 def load_summary() -> pd.DataFrame:
-    conn = psycopg2.connect(PG_CONN_STR)
-    df = pd.read_sql("SELECT * FROM claims.claim_risk_summary", conn)
-    conn.close()
-    return df
+    try:
+        conn = psycopg2.connect(PG_CONN_STR)
+        df = pd.read_sql("SELECT * FROM claims.claim_risk_summary", conn)
+        conn.close()
+        return df
+    except Exception:
+        return pd.DataFrame()
 
 
-st.markdown('<div class="console-title">Claims Risk Console</div>', unsafe_allow_html=True)
-st.markdown(
-    '<div class="console-subtitle">Fraud risk · billing anomaly · customer risk — with AI-generated adjuster rationale</div>',
-    unsafe_allow_html=True,
-)
+# --- Main Header ---
+st.markdown("""
+<div class="hero-header">
+    <div class="hero-title">🛡️ Insurance Claims Risk & Fraud Intelligence</div>
+    <div class="hero-subtitle">Real-Time Ingestion • XGBoost & Isolation Forest Risk Triage • Gemini GenAI Adjuster Rationales</div>
+</div>
+""", unsafe_allow_html=True)
 
 df = load_summary()
 
 if df.empty:
-    st.warning("No scored claims yet. Run the scoring pipeline first (models/score_all.py).")
+    st.info("💡 **Getting Started**: Run the dataset ingestion and scoring pipeline to view real-time triage data.")
+    st.code("python models/score_all.py", language="bash")
     st.stop()
 
+# --- Executive KPI Cards ---
+total_claims = len(df)
+red_cnt = int((df.triage_flag == "RED").sum())
+yellow_cnt = int((df.triage_flag == "YELLOW").sum())
+green_cnt = int((df.triage_flag == "GREEN").sum())
+
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Total claims", len(df))
-col2.metric("Red flags", int((df.triage_flag == "RED").sum()))
-col3.metric("Yellow flags", int((df.triage_flag == "YELLOW").sum()))
-col4.metric("Green (clean)", int((df.triage_flag == "GREEN").sum()))
+col1.metric("Total Claims Processed", f"{total_claims:,}")
+col2.metric("High Risk (RED)", f"{red_cnt:,}", f"{(red_cnt/total_claims):.1%}")
+col3.metric("Medium Risk (YELLOW)", f"{yellow_cnt:,}", f"{(yellow_cnt/total_claims):.1%}")
+col4.metric("Low Risk (GREEN)", f"{green_cnt:,}", f"{(green_cnt/total_claims):.1%}")
 
 st.write("")
 
+# --- Sidebar Filters ---
 with st.sidebar:
-    st.markdown("### Filters")
-    flag_filter = st.multiselect(
-        "Triage flag", options=["RED", "YELLOW", "GREEN"], default=["RED", "YELLOW"]
+    st.markdown("### 🎛️ Triage Controls")
+    
+    selected_flags = st.multiselect(
+        "Filter by Triage Status",
+        options=["RED", "YELLOW", "GREEN"],
+        default=["RED", "YELLOW"]
     )
-    policy_filter = st.multiselect(
-        "Base policy", options=sorted(df.base_policy.dropna().unique().tolist())
-    )
+    
+    categories = sorted([x for x in df["vehicle_category"].dropna().unique() if x])
+    selected_categories = st.multiselect("Vehicle Category", options=categories)
+    
+    policies = sorted([x for x in df["base_policy"].dropna().unique() if x])
+    selected_policies = st.multiselect("Policy Type", options=policies)
+    
+    search_query = st.text_input("🔍 Search Claim ID", placeholder="e.g. 1042")
 
-filtered = df[df.triage_flag.isin(flag_filter)] if flag_filter else df
-if policy_filter:
-    filtered = filtered[filtered.base_policy.isin(policy_filter)]
+# Apply Filters
+filtered_df = df.copy()
+if selected_flags:
+    filtered_df = filtered_df[filtered_df["triage_flag"].isin(selected_flags)]
+if selected_categories:
+    filtered_df = filtered_df[filtered_df["vehicle_category"].isin(selected_categories)]
+if selected_policies:
+    filtered_df = filtered_df[filtered_df["base_policy"].isin(selected_policies)]
+if search_query:
+    filtered_df = filtered_df[filtered_df["claim_id"].astype(str).str.contains(search_query, case=False)]
 
-filtered = filtered.sort_values("fraud_probability", ascending=False)
+filtered_df = filtered_df.sort_values("fraud_probability", ascending=False)
 
-st.markdown(f"### Triage queue — {len(filtered)} claims")
+# --- Interactive Main Tabs ---
+tab1, tab2, tab3 = st.tabs(["🚨 Triage Queue & AI Explanations", "📊 Risk Analytics & Heatmaps", "📋 Claim Explorer"])
 
-flag_icon = {"RED": "🔴", "YELLOW": "🟡", "GREEN": "🟢"}
-chip_class = {"RED": "chip-red", "YELLOW": "chip-yellow", "GREEN": "chip-green"}
+# --- TAB 1: TRIAGE QUEUE ---
+with tab1:
+    st.markdown(f"### Triage Queue (`{len(filtered_df)}` Claims Match Filters)")
+    
+    badge_map = {"RED": "badge-red", "YELLOW": "badge-yellow", "GREEN": "badge-green"}
+    icon_map = {"RED": "🔴", "YELLOW": "🟡", "GREEN": "🟢"}
+    
+    for _, row in filtered_df.head(50).iterrows():
+        status = row.get("triage_flag", "GREEN")
+        badge_style = badge_map.get(status, "badge-green")
+        icon = icon_map.get(status, "🟢")
+        
+        fraud_pct = f"{row['fraud_probability']:.1%}" if pd.notna(row['fraud_probability']) else "N/A"
+        anomaly_pct = f"{row['anomaly_score']:.1%}" if pd.notna(row['anomaly_score']) else "N/A"
+        
+        header_text = f"{icon} Claim #{row['claim_id']}  │  Vehicle: {row.get('vehicle_category', 'N/A')}  │  Fraud Risk: {fraud_pct}  │  Anomaly: {anomaly_pct}"
+        
+        with st.expander(header_text):
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Fraud Probability (XGBoost)", fraud_pct)
+            m2.metric("Anomaly Score (Isolation Forest)", anomaly_pct)
+            m3.metric("Customer Risk Index", f"{row['customer_risk_index']:.1f}" if pd.notna(row['customer_risk_index']) else "N/A")
+            m4.markdown(f"<div style='margin-top: 1rem;'><span class='{badge_style}'>{status} TRIAGE</span></div>", unsafe_allow_html=True)
+            
+            st.divider()
+            
+            # Claim Metadata Details
+            d1, d2, d3, d4 = st.columns(4)
+            d1.write(f"**Policyholder Age:** {row.get('age_of_policyholder', 'N/A')}")
+            d2.write(f"**Fault:** {row.get('fault', 'N/A')}")
+            d3.write(f"**Base Policy:** {row.get('base_policy', 'N/A')}")
+            d4.write(f"**Past Claims:** {row.get('past_number_of_claims', 'N/A')}")
+            
+            # AI Rationale Box
+            rationale = row.get("rationale_text")
+            if pd.notna(rationale) and rationale:
+                st.markdown(f"""
+                <div class="ai-rationale-card">
+                    <div class="ai-rationale-title">🤖 Gemini GenAI Adjuster Rationale</div>
+                    <div class="ai-rationale-body">{rationale}</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                reasons = row.get("flagged_reasons")
+                if reasons and isinstance(reasons, list):
+                    st.markdown("**Key Risk Factors Identified:**")
+                    for r in reasons:
+                        st.markdown(f"- ⚠️ {r}")
+            else:
+                st.caption("ℹ️ *No GenAI rationale generated yet for this claim (pending batch run or below threshold).*")
 
-for _, row in filtered.head(100).iterrows():
-    icon = flag_icon.get(row.triage_flag, "⚪")
-    label = (
-        f"{icon}  {row.claim_id}  ·  {row.vehicle_category or 'N/A'}  ·  "
-        f"fraud risk {row.fraud_probability:.1%}"
-        if pd.notna(row.fraud_probability)
-        else f"{icon}  {row.claim_id}  ·  not yet scored"
-    )
-    with st.expander(label):
-        chip = chip_class.get(row.triage_flag, "chip-neutral")
-        st.markdown(f'<span class="chip {chip}">{row.triage_flag}</span>', unsafe_allow_html=True)
-
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Fraud probability", f"{row.fraud_probability:.1%}" if pd.notna(row.fraud_probability) else "—")
-        c2.metric("Anomaly score", f"{row.anomaly_score:.1%}" if pd.notna(row.anomaly_score) else "—")
-        c3.metric("Customer risk index", f"{row.customer_risk_index:.1%}" if pd.notna(row.customer_risk_index) else "—")
-
-        st.markdown(
-            f'<span class="data-label">FAULT</span> <span class="data-value">{row.fault}</span>'
-            f'&nbsp;&nbsp;·&nbsp;&nbsp;'
-            f'<span class="data-label">BASE POLICY</span> <span class="data-value">{row.base_policy}</span>',
-            unsafe_allow_html=True,
+# --- TAB 2: VISUAL ANALYTICS & INSIGHTS ---
+with tab2:
+    st.markdown("### 📈 Risk Analytics & Distribution Patterns")
+    
+    chart_col1, chart_col2 = st.columns(2)
+    
+    with chart_col1:
+        st.markdown("#### 🎯 Claims by Triage Priority")
+        flag_counts = df["triage_flag"].value_counts().reset_index()
+        flag_counts.columns = ["Triage Flag", "Count"]
+        st.bar_chart(flag_counts.set_index("Triage Flag"), color="#3B82F6")
+        
+    with chart_col2:
+        st.markdown("#### 🚗 Fraud Risk by Vehicle Category")
+        if "vehicle_category" in df.columns:
+            cat_risk = df.groupby("vehicle_category")["fraud_probability"].mean().reset_index()
+            cat_risk.columns = ["Vehicle Category", "Avg Fraud Probability"]
+            st.bar_chart(cat_risk.set_index("Vehicle Category"), color="#8B5CF6")
+            
+    st.divider()
+    
+    st.markdown("#### ⚡ Fraud Risk vs. Anomaly Score Scatter Matrix")
+    if "fraud_probability" in df.columns and "anomaly_score" in df.columns:
+        st.scatter_chart(
+            df[["fraud_probability", "anomaly_score"]],
+            x="fraud_probability",
+            y="anomaly_score",
+            color="#EF4444"
         )
 
-        if pd.notna(row.rationale_text):
-            st.markdown(f'<div class="rationale-box">{row.rationale_text}</div>', unsafe_allow_html=True)
-            st.markdown(
-                f'<span class="chip chip-neutral">{row.recommended_action}</span>',
-                unsafe_allow_html=True,
-            )
-            if row.flagged_reasons:
-                for reason in row.flagged_reasons:
-                    st.markdown(f'<span class="data-label">— {reason}</span>', unsafe_allow_html=True)
-        else:
-            st.caption("No AI rationale generated yet for this claim (below triage threshold, or pending batch).")
-
-if len(filtered) > 100:
-    st.caption(f"Showing top 100 of {len(filtered)} matching claims, sorted by fraud probability.")
+# --- TAB 3: CLAIM EXPLORER & DATA TABLE ---
+with tab3:
+    st.markdown("### 📋 Full Scored Claims Database")
+    
+    st.dataframe(
+        filtered_df,
+        use_container_width=True,
+        column_config={
+            "fraud_probability": st.column_config.ProgressColumn(
+                "Fraud Probability",
+                format="%.2f",
+                min_value=0.0,
+                max_value=1.0,
+            ),
+            "anomaly_score": st.column_config.ProgressColumn(
+                "Anomaly Score",
+                format="%.2f",
+                min_value=0.0,
+                max_value=1.0,
+            ),
+        }
+    )
+    
+    csv_data = filtered_df.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        "📥 Download Scored Claims CSV",
+        data=csv_data,
+        file_name="scored_claims_report.csv",
+        mime="text/csv"
+    )
