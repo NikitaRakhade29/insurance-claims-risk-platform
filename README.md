@@ -6,6 +6,10 @@ A Kafka-streamed, Airflow-orchestrated insurance claims platform that scores fra
 
 Insurance adjusters manually review every incoming claim at roughly the same pace, regardless of how suspicious it actually is. This lets real fraud slip through while clean claims sit in the same slow queue as risky ones. This platform automates the first-pass triage: it scores every claim on three independent signals and tells an adjuster which handful genuinely need their attention first.
 
+<img width="1887" height="802" alt="image" src="https://github.com/user-attachments/assets/9ae51845-b854-4d2d-99a2-4ecf70d9dd45" />
+<img width="1896" height="690" alt="image" src="https://github.com/user-attachments/assets/e63732d9-143c-4864-8e77-87555d601e21" />
+
+
 ## Architecture
 
 ```
