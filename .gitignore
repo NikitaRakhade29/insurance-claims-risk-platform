@@ -94,10 +94,8 @@ models/*.pkl
 models/*.joblib
 models/*.h5
 models/*.onnx
+models/saved/
 
-# Ignore trained models but keep folder
-models/*
-!models/.gitkeep
 
 # ===========================
 # Streamlit
